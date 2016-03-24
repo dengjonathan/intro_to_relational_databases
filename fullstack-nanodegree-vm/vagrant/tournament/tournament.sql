@@ -46,6 +46,6 @@ create view player_records as
          match_record.wins as wins,
          match_record.losses as losses,
          match_record.total as total_matches
-  from players, match_record
-  where players.player_id = match_record.player_id
+  from players left join match_record
+  on players.player_id = match_record.player_id
   order by wins desc;

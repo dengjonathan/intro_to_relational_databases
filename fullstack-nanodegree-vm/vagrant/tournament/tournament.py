@@ -3,11 +3,23 @@
 # tournament.py -- implementation of a Swiss-system tournament
 #
 import psycopg2
+import bleach
+
+def sanitizeInputs(input):
+    """Sanitizes inputs for scripts and apostrophes"""
+    input = bleach.clean(input)
+    i = 0
+    bad_apos = []
+    for i in range(len(input)):
+        if input[i] == "'":
+            bad_apos.append(i)
+    for i in bad_apos:
+        input = input[:i] + "'" + input[i:]
+    return input
 
 def connect():
     """Connect to the PostgreSQL database.  Returns a database connection."""
     return psycopg2.connect("dbname=tournament")
-
 
 def deleteMatches():
 
@@ -51,10 +63,12 @@ def registerPlayer(name):
     Args:
       name: the player's full name (need not be unique).
     """
+    name = sanitizeInputs(name)
     DB = connect()
     c = DB.cursor()
+    #issue how to execute sql command for names with apostrophes i.e. O'Neal
     c.execute(
-        "INSERT INTO players (player_name) VALUES ('{}');".format(name)
+        "INSERT INTO players (player_name) VALUES (\'{}\');".format(name)
         )
     DB.commit()
     #possible bug where this execute statement will select another player with
@@ -62,7 +76,7 @@ def registerPlayer(name):
     #the wrong id
     #TODO find a way to refactor
     c.execute(
-        "SELECT player_id FROM players WHERE player_name = '{}';".format(name)
+        "SELECT player_id FROM players WHERE player_name = \'{}\';".format(name)
         )
     player_id = c.fetchone()[0]
     output = (
@@ -84,16 +98,17 @@ def playerStandings():
         wins: the number of matches the player has won
         matches: the number of matches the player has played
     """
+    l = []
     DB = connect()
     c = DB.cursor()
     c.execute(
-        'SELECT COUNT(*) FROM players;'
+        "SELECT player_id, player_name, wins, total_matches FROM player_records;"
         )
-    numPlayers = c.fetchone()[0]
-    print 'There are a total of {} players'.format(numPlayers)
+    #TODO below returns a weird object for rows, which fucks with returning
+    for row in c.fetchall():
+        l.append(row)
     DB.close()
-    return numPlayers
-
+    return l
 
 def reportMatch(winner, loser):
     """Records the outcome of a single match between two players.
@@ -102,7 +117,16 @@ def reportMatch(winner, loser):
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
     """
-
+    DB = connect()
+    c = DB.cursor()
+    c.execute(
+            ("INSERT INTO matches (winning_player_id, losing_player_id)"
+            "VALUES ('{}', '{}');").format(winner, loser)
+        )
+    DB.commit()
+    print ('A match was recorded'
+    'with winner {} and loser {}').format(winner, loser)
+    DB.close()
 
 def swissPairings():
     """Returns a list of pairs of players for the next round of a match.
@@ -119,3 +143,13 @@ def swissPairings():
         id2: the second player's unique id
         name2: the second player's name
     """
+    DB = connect()
+    c = DB.cursor()
+    c.execute( "select player_id, player_name from player_records")
+    rows = c.fetchall()
+    DB.close()
+    players_matched = []
+    for i in range(0, len(rows), 2):
+        players_matched.append((rows[i][0], rows[i][1],
+                                rows[i+1][0], rows[i+1][1]))
+    return players_matched
