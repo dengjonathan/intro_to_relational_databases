@@ -1,51 +1,56 @@
 -- Creates database schema and views for the tournament project.
 -- From VM, run with command psql \i tournament.sql
 
-create database tournament;
+CREATE DATABASE tournament;
+
 \c tournament;
 
-create table players
-  (player_name text,
-   player_id serial primary key
-  );
 
-create table matches
-  (match_id serial primary key,
-   winning_player_id integer references players(player_id),
-   losing_player_id integer references players(player_id)
-  );
+CREATE TABLE players (player_name text, player_id serial PRIMARY KEY );
 
-create view wins as
-  select players.player_id, count(matches.winning_player_id) as wins
-  from players
-  left join matches
-  on players.player_id = matches.winning_player_id
-  group by players.player_id
-  order by wins desc;
 
-create view losses as
-  select players.player_id, count(matches.losing_player_id) as losses
-  from players
-  left join matches
-  on players.player_id = matches.losing_player_id
-  group by players.player_id
-  order by losses desc;
+CREATE TABLE matches (match_id serial PRIMARY KEY,
+                      winning_player_id integer REFERENCES players(player_id),
+                      losing_player_id integer REFERENCES players(player_id));
+
+
+CREATE VIEW wins AS
+SELECT players.player_id,
+       count(matches.winning_player_id) AS wins
+FROM players
+LEFT JOIN matches ON players.player_id = matches.winning_player_id
+GROUP BY players.player_id
+ORDER BY wins DESC;
+
+
+CREATE VIEW losses AS
+SELECT players.player_id,
+       count(matches.losing_player_id) AS losses
+FROM players
+LEFT JOIN matches ON players.player_id = matches.losing_player_id
+GROUP BY players.player_id
+ORDER BY losses DESC;
 
 --creates view using views (wins, losses) to show entire match history by player
-create view match_record as
- select wins.player_id as player_id, wins.wins as wins,
- losses.losses as losses, (wins + losses) as total
- from wins, losses
- where wins.player_id = losses.player_id
- order by total desc;
+
+CREATE VIEW match_record AS
+SELECT wins.player_id AS player_id,
+       wins.wins AS wins,
+       losses.losses AS losses,
+       (wins + losses) AS total
+FROM wins,
+     losses
+WHERE wins.player_id = losses.player_id
+ORDER BY total DESC;
 
 --adds to match_record view by adding player's name
-create view player_records as
-  select players.player_id as player_id,
-         players.player_name as player_name,
-         match_record.wins as wins,
-         match_record.losses as losses,
-         match_record.total as total_matches
-  from players left join match_record
-  on players.player_id = match_record.player_id
-  order by wins desc;
+
+CREATE VIEW player_records AS
+SELECT players.player_id AS player_id,
+       players.player_name AS player_name,
+       match_record.wins AS wins,
+       match_record.losses AS losses,
+       match_record.total AS total_matches
+FROM players
+LEFT JOIN match_record ON players.player_id = match_record.player_id
+ORDER BY wins DESC;

@@ -5,6 +5,7 @@
 import psycopg2
 import bleach
 
+
 def sanitizeInputs(input):
     """Sanitizes inputs for scripts and apostrophes"""
     input = bleach.clean(input)
@@ -17,9 +18,11 @@ def sanitizeInputs(input):
         input = input[:i] + "'" + input[i:]
     return input
 
+
 def connect():
     """Connect to the PostgreSQL database.  Returns a database connection."""
     return psycopg2.connect("dbname=tournament")
+
 
 def deleteMatches():
 
@@ -32,6 +35,7 @@ def deleteMatches():
     print 'All match records deleted in SQL database'
     DB.close()
 
+
 def deletePlayers():
     """Remove all the player records from the database."""
     DB = connect()
@@ -41,6 +45,7 @@ def deletePlayers():
     DB.commit()
     print 'All player records deleted in SQL database'
     DB.close()
+
 
 def countPlayers():
     """Returns the number of players currently registered."""
@@ -54,6 +59,7 @@ def countPlayers():
     DB.close()
     return numPlayers
 
+
 def registerPlayer(name):
     """Adds a player to the tournament database.
 
@@ -66,17 +72,16 @@ def registerPlayer(name):
     name = sanitizeInputs(name)
     DB = connect()
     c = DB.cursor()
-    #issue how to execute sql command for names with apostrophes i.e. O'Neal
+    # issue how to execute sql command for names with apostrophes i.e. O'Neal
     c.execute(
-        "INSERT INTO players (player_name) VALUES (\'{}\');".format(name)
+        "INSERT INTO players (player_name) VALUES ('{}');".format(name)
         )
     DB.commit()
-    #possible bug where this execute statement will select another player with
-    #the same player_name as the recently inserted player, and will return
-    #the wrong id
-    #TODO find a way to refactor
+    # possible bug where this execute statement will select another player with
+    # the same player_name as the recently inserted player, and will return
+    # the wrong id
     c.execute(
-        "SELECT player_id FROM players WHERE player_name = \'{}\';".format(name)
+        "SELECT player_id FROM players WHERE player_name = '{}';".format(name)
         )
     player_id = c.fetchone()[0]
     output = (
@@ -85,14 +90,16 @@ def registerPlayer(name):
     print output
     DB.close()
 
+
 def playerStandings():
     """Returns a list of the players and their win records, sorted by wins.
 
-    The first entry in the list should be the player in first place, or a player
-    tied for first place if there is currently a tie.
+    The first entry in the list should be the player in first place,
+    or a player tied for first place if there is currently a tie.
 
     Returns:
-      A list of tuples, each of which contains (id, name, wins, matches):
+      A list of tupls, each of which con
+tains (id, name, wins, matches):
         id: the player's unique id (assigned by the database)
         name: the player's full name (as registered)
         wins: the number of matches the player has won
@@ -102,13 +109,13 @@ def playerStandings():
     DB = connect()
     c = DB.cursor()
     c.execute(
-        "SELECT player_id, player_name, wins, total_matches FROM player_records;"
-        )
-    #TODO below returns a weird object for rows, which fucks with returning
+      "SELECT player_id, player_name, wins, total_matches FROM player_records;"
+             )
     for row in c.fetchall():
         l.append(row)
     DB.close()
     return l
+
 
 def reportMatch(winner, loser):
     """Records the outcome of a single match between two players.
@@ -121,12 +128,14 @@ def reportMatch(winner, loser):
     c = DB.cursor()
     c.execute(
             ("INSERT INTO matches (winning_player_id, losing_player_id)"
-            "VALUES ('{}', '{}');").format(winner, loser)
+             "VALUES ('{}', '{}');").format(winner, loser)
         )
     DB.commit()
-    print ('A match was recorded'
-    'with winner {} and loser {}').format(winner, loser)
+
+    print ("A match was recorded"
+           "with winner {} and loser {}").format(winner, loser)
     DB.close()
+
 
 def swissPairings():
     """Returns a list of pairs of players for the next round of a match.
@@ -145,7 +154,7 @@ def swissPairings():
     """
     DB = connect()
     c = DB.cursor()
-    c.execute( "select player_id, player_name from player_records")
+    c.execute("select player_id, player_name from player_records")
     rows = c.fetchall()
     DB.close()
     players_matched = []
